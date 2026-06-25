@@ -37,6 +37,8 @@ final class BrowserController: NSObject, NSApplicationDelegate, NSWindowDelegate
     private let adBlocker = QuartzAdBlocker()
     private var adBlockerMenuItem: NSMenuItem?
     private var readerModeMenuItem: NSMenuItem?
+    private var installExtensionMenuItem: NSMenuItem?
+    private var installChromeWebStoreExtensionMenuItem: NSMenuItem?
     private var isReaderModeActive = false
 
     private let homeURL = URL(string: "https://www.example.com")!
@@ -232,9 +234,21 @@ final class BrowserController: NSObject, NSApplicationDelegate, NSWindowDelegate
         let extensionsMenuItem = NSMenuItem()
         let extensionsMenu = NSMenu(title: "Extensions")
 
-        let installExtensionItem = NSMenuItem(title: "Install Chromium Extension...", action: #selector(installExtension(_:)), keyEquivalent: "e")
+        let installChromeWebStoreExtensionItem = NSMenuItem(
+            title: "Install from Chrome Web Store...",
+            action: #selector(installExtensionFromChromeWebStore(_:)),
+            keyEquivalent: ""
+        )
+        installChromeWebStoreExtensionItem.target = self
+        extensionsMenu.addItem(installChromeWebStoreExtensionItem)
+        installChromeWebStoreExtensionMenuItem = installChromeWebStoreExtensionItem
+
+        let installExtensionItem = NSMenuItem(title: "Install Extension from File...", action: #selector(installExtension(_:)), keyEquivalent: "e")
         installExtensionItem.target = self
         extensionsMenu.addItem(installExtensionItem)
+        installExtensionMenuItem = installExtensionItem
+
+        extensionsMenu.addItem(.separator())
 
         let extensionStatusItem = NSMenuItem(title: "Extension Status", action: #selector(showExtensionStatus(_:)), keyEquivalent: "")
         extensionStatusItem.target = self
@@ -364,6 +378,35 @@ final class BrowserController: NSObject, NSApplicationDelegate, NSWindowDelegate
         }
     }
 
+    @objc private func installExtensionFromChromeWebStore(_ sender: Any?) {
+        guard #available(macOS 15.4, *), let support = webExtensionSupport as? QuartzWebExtensionSupport else {
+            showExtensionsUnavailableAlert()
+            return
+        }
+
+        guard let reference = chromeWebStoreExtensionReferenceFromUser() else {
+            return
+        }
+
+        setExtensionInstallControlsEnabled(false)
+
+        support.installExtensionFromChromeWebStore(reference) { [weak self] result in
+            guard let self else {
+                return
+            }
+
+            self.setExtensionInstallControlsEnabled(true)
+            self.updateExtensionsButton()
+
+            switch result {
+            case .success(let summary):
+                self.showExtensionAlert(title: "Extension Installed", message: summary)
+            case .failure(let error):
+                self.showExtensionAlert(title: "Extension Could Not Be Installed", message: error.localizedDescription)
+            }
+        }
+    }
+
     @objc private func showExtensionStatus(_ sender: Any?) {
         guard #available(macOS 15.4, *), let support = webExtensionSupport as? QuartzWebExtensionSupport else {
             showExtensionsUnavailableAlert()
@@ -385,6 +428,33 @@ final class BrowserController: NSObject, NSApplicationDelegate, NSWindowDelegate
         )
     }
 
+    private func chromeWebStoreExtensionReferenceFromUser() -> String? {
+        let alert = NSAlert()
+        alert.messageText = "Install from Chrome Web Store"
+        alert.informativeText = "Paste a Chrome Web Store listing URL or extension ID."
+        alert.addButton(withTitle: "Install")
+        alert.addButton(withTitle: "Cancel")
+
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 460, height: 24))
+        inputField.placeholderString = "https://chromewebstore.google.com/detail/..."
+        alert.accessoryView = inputField
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return nil
+        }
+
+        let reference = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if reference.isEmpty {
+            showExtensionAlert(
+                title: "Chrome Web Store URL Required",
+                message: "Paste a Chrome Web Store extension URL or extension ID to install."
+            )
+            return nil
+        }
+
+        return reference
+    }
+
     private static func extensionInstallContentTypes() -> [UTType] {
         var contentTypes: [UTType] = [.folder]
 
@@ -402,6 +472,12 @@ final class BrowserController: NSObject, NSApplicationDelegate, NSWindowDelegate
         alert.messageText = title
         alert.informativeText = message
         alert.runModal()
+    }
+
+    private func setExtensionInstallControlsEnabled(_ isEnabled: Bool) {
+        extensionsButton.isEnabled = isEnabled
+        installExtensionMenuItem?.isEnabled = isEnabled
+        installChromeWebStoreExtensionMenuItem?.isEnabled = isEnabled
     }
 
     private func loadSavedExtensionsThenRestoreSession() {
