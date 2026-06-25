@@ -12,7 +12,10 @@ APP_DIR="${DIST_DIR}/${PRODUCT_NAME}.app"
 
 cd "${ROOT_DIR}"
 
-BIN_DIR="$(swift build --show-bin-path -c "${CONFIGURATION}" --arch arm64 --arch x86_64)"
+BUILD_ARGS=(-c "${CONFIGURATION}" --arch arm64 --arch x86_64 --product "${PRODUCT_NAME}")
+swift build "${BUILD_ARGS[@]}"
+
+BIN_DIR="$(swift build --show-bin-path "${BUILD_ARGS[@]}")"
 EXECUTABLE="${BIN_DIR}/${PRODUCT_NAME}"
 
 if [[ ! -x "${EXECUTABLE}" ]]; then
@@ -66,7 +69,7 @@ codesign "${CODESIGN_ARGS[@]}" "${APP_DIR}"
 codesign --verify --strict --verbose=2 "${APP_DIR}"
 
 if [[ "${ZIP_APP:-0}" == "1" ]]; then
-    ditto -c -k --keepParent "${APP_DIR}" "${DIST_DIR}/${PRODUCT_NAME}.zip"
+    ditto -c -k --norsrc --keepParent "${APP_DIR}" "${DIST_DIR}/${PRODUCT_NAME}.zip"
 fi
 
 echo "Built ${APP_DIR}"
