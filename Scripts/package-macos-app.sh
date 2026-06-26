@@ -4,8 +4,16 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PRODUCT_NAME="${PRODUCT_NAME:-Quartz}"
 BUNDLE_ID="${BUNDLE_ID:-org.quartzbrowser.Quartz}"
-VERSION="${VERSION:-0.4.2}" # x-release-please-version
-BUILD_NUMBER="${BUILD_NUMBER:-2}"
+VERSION_FILE="${ROOT_DIR}/version.txt"
+DEFAULT_VERSION="0.0.0"
+if [[ -f "${VERSION_FILE}" ]]; then
+    DEFAULT_VERSION="$(tr -d '[:space:]' < "${VERSION_FILE}")"
+fi
+if [[ -z "${DEFAULT_VERSION}" ]]; then
+    DEFAULT_VERSION="0.0.0"
+fi
+VERSION="${VERSION:-${DEFAULT_VERSION}}"
+BUILD_NUMBER="${BUILD_NUMBER:-${VERSION}}"
 CONFIGURATION="${CONFIGURATION:-release}"
 DIST_DIR="${DIST_DIR:-"${ROOT_DIR}/dist"}"
 APP_DIR="${DIST_DIR}/${PRODUCT_NAME}.app"
