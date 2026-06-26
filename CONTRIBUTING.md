@@ -71,10 +71,12 @@ In the pull request description, include:
 
 ## Releases
 
-Quartz uses release-please to prepare changelogs, version bumps, tags, GitHub
-releases, and release archives from commits merged into `main`.
+Quartz uses semantic-release to publish versions directly from commits merged
+into `main`. The release workflow analyzes commit titles, updates
+`CHANGELOG.md` and `version.txt`, builds the macOS archive, tags the release,
+and publishes the GitHub release without a release pull request.
 
-Use Conventional Commit titles for squash merges so release-please can classify
+Use Conventional Commit titles for squash merges so semantic-release can classify
 changes:
 
 - `fix: describe the bug fix` for patch releases
