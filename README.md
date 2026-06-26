@@ -55,10 +55,17 @@ xcrun stapler staple dist/Quartz.app
 - WebKit-powered browsing
 - Tiny built-in ad blocker for obvious third-party ad resources
 - Reading mode for article-focused pages
+- Facet side-panel agent powered by the local Codex CLI
 - Optional Chromium-format WebExtension installation on macOS 15.4+, including Chrome Web Store downloads
 - Address/search field
-- Back, forward, reload, stop, home, and reading controls
+- Back, forward, reload, stop, home, reading, and Facet controls
 - Basic keyboard menu items
+
+## Facet
+
+Facet is a docked AI agent panel inside Quartz. Open it from the sparkles toolbar button or **View > Show Facet**, then ask a question. When **Current page** is enabled, Quartz sends the active page URL, title, selected text, description, and a bounded visible-text excerpt to Codex as context.
+
+Facet uses the local `codex` CLI in read-only, non-interactive mode. Make sure `codex` is installed and authenticated before using it in Quartz.
 
 ## Extensions
 
