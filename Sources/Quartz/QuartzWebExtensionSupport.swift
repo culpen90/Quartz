@@ -383,10 +383,15 @@ final class QuartzWebExtensionSupport: NSObject {
             throw QuartzWebExtensionSupportError.invalidChromiumPackage
         }
 
-        return UInt32(bytes[offset])
-            | (UInt32(bytes[offset + 1]) << 8)
-            | (UInt32(bytes[offset + 2]) << 16)
-            | (UInt32(bytes[offset + 3]) << 24)
+        let valueBytes = Array(bytes[offset..<(offset + 4)])
+        return valueBytes.withUnsafeBytes { rawBuffer in
+            let rawValue =
+                UInt32(rawBuffer.load(fromByteOffset: 0, as: UInt8.self))
+                | (UInt32(rawBuffer.load(fromByteOffset: 1, as: UInt8.self)) << 8)
+                | (UInt32(rawBuffer.load(fromByteOffset: 2, as: UInt8.self)) << 16)
+                | (UInt32(rawBuffer.load(fromByteOffset: 3, as: UInt8.self)) << 24)
+            return UInt32(littleEndian: rawValue)
+        }
     }
 
     private func installedExtensionsDirectory() throws -> URL {
