@@ -9,8 +9,6 @@
 * **webextensions:** resolve symlinks for sandbox page checks ([83467db](https://github.com/QuartzBrowser/Quartz/commit/83467dbc5ba586cc8938d7bb12f847b90fdd5780))
 * **webextensions:** use fallback scalar for install signatures ([4e9a63d](https://github.com/QuartzBrowser/Quartz/commit/4e9a63dce663b018bebfd9348ba9a72451572cc7))
 
-# Changelog
-
 ## [0.4.2](https://github.com/QuartzBrowser/Quartz/compare/v0.4.1...v0.4.2) (2026-06-25)
 
 
