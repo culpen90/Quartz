@@ -468,7 +468,13 @@ final class QuartzWebExtensionSupport: NSObject {
             return nil
         }
 
-        guard pagePath.split(separator: "/").contains("..") == false else {
+        let decodedPagePath = pagePath.removingPercentEncoding ?? pagePath
+        let standardizedPagePath = (decodedPagePath as NSString).standardizingPath
+        let normalizedPagePath = standardizedPagePath.replacingOccurrences(of: "\\", with: "/")
+
+        guard normalizedPagePath.hasPrefix("/") == false,
+              normalizedPagePath.split(separator: "/").contains("..") == false
+        else {
             throw QuartzWebExtensionSupportError.sandboxedExtensionPageUnavailable(pagePath)
         }
 
