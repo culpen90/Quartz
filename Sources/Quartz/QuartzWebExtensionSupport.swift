@@ -23,7 +23,12 @@ final class QuartzWebExtensionSupport: NSObject {
     private let installedExtensionsDirectoryName = "Extensions"
     private let chromeWebStoreDownloadDirectoryName = "ChromeWebStoreDownloads"
     private let sandboxedExtensionPagesDirectoryName = "SandboxedExtensionPages"
-    private let chromeWebStoreUpdateURL = URL(string: "https://clients2.google.com/service/update2/crx")!
+    private var chromeWebStoreUpdateURL: URL {
+        guard let url = URL(string: "https://clients2.google.com/service/update2/crx") else {
+            fatalError("Invalid Chrome Web Store update URL constant.")
+        }
+        return url
+    }
 
     var installedExtensionNames: [String] {
         extensionContextsByPath.values
@@ -383,10 +388,15 @@ final class QuartzWebExtensionSupport: NSObject {
             throw QuartzWebExtensionSupportError.invalidChromiumPackage
         }
 
-        return UInt32(bytes[offset])
-            | (UInt32(bytes[offset + 1]) << 8)
-            | (UInt32(bytes[offset + 2]) << 16)
-            | (UInt32(bytes[offset + 3]) << 24)
+        let valueBytes = Array(bytes[offset..<(offset + 4)])
+        return valueBytes.withUnsafeBytes { rawBuffer in
+            let rawValue =
+                UInt32(rawBuffer.load(fromByteOffset: 0, as: UInt8.self))
+                | (UInt32(rawBuffer.load(fromByteOffset: 1, as: UInt8.self)) << 8)
+                | (UInt32(rawBuffer.load(fromByteOffset: 2, as: UInt8.self)) << 16)
+                | (UInt32(rawBuffer.load(fromByteOffset: 3, as: UInt8.self)) << 24)
+            return UInt32(littleEndian: rawValue)
+        }
     }
 
     private func installedExtensionsDirectory() throws -> URL {
@@ -468,7 +478,13 @@ final class QuartzWebExtensionSupport: NSObject {
             return nil
         }
 
-        guard pagePath.split(separator: "/").contains("..") == false else {
+        let decodedPagePath = pagePath.removingPercentEncoding ?? pagePath
+        let standardizedPagePath = (decodedPagePath as NSString).standardizingPath
+        let normalizedPagePath = standardizedPagePath.replacingOccurrences(of: "\\", with: "/")
+
+        guard normalizedPagePath.hasPrefix("/") == false,
+              normalizedPagePath.split(separator: "/").contains("..") == false
+        else {
             throw QuartzWebExtensionSupportError.sandboxedExtensionPageUnavailable(pagePath)
         }
 
@@ -486,8 +502,14 @@ final class QuartzWebExtensionSupport: NSObject {
         let pageURL = resourceDirectoryURL
             .appendingPathComponent(pagePath, isDirectory: false)
             .standardizedFileURL
-        let resourceDirectoryPath = resourceDirectoryURL.standardizedFileURL.path
-        guard pageURL.path.hasPrefix(resourceDirectoryPath + "/") else {
+        let resolvedResourceDirectoryURL = resourceDirectoryURL
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+        let resolvedPageURL = pageURL
+            .resolvingSymlinksInPath()
+            .standardizedFileURL
+        let resourceDirectoryPath = resolvedResourceDirectoryURL.path
+        guard resolvedPageURL.path.hasPrefix(resourceDirectoryPath + "/") else {
             throw QuartzWebExtensionSupportError.sandboxedExtensionPageUnavailable(pagePath)
         }
 
@@ -566,8 +588,9 @@ final class QuartzWebExtensionSupport: NSObject {
         let size = values.fileSize ?? 0
         let rawSignature = "\(archiveURL.deletingPathExtension().lastPathComponent)-\(size)-\(modifiedAt)"
         let allowedCharacters = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_."))
+        let fallbackScalar = "-".unicodeScalars.first!
         let scalars = rawSignature.unicodeScalars.map { scalar in
-            allowedCharacters.contains(scalar) ? scalar : UnicodeScalar("-")
+            allowedCharacters.contains(scalar) ? scalar : fallbackScalar
         }
 
         let signature = String(String.UnicodeScalarView(scalars))
